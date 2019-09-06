@@ -44,8 +44,8 @@ Servo s_3;  //
 Servo s_4;
 Servo s_T;  // Finger T
 
-int M[5];
-// twelve servo objects can be created on most boards
+int M[5]; // this is motor command control which is read from serial
+
 unsigned char a1,a2;
 
 // Global constants and variables
