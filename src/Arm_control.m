@@ -3,14 +3,18 @@
 
 ard= serial('COM3','BaudRate',57600);
 
-Fs=256; % set on ard code
+Fs=256; %Sampling frequency, set on ard code
+chn_num=1; %number of EMG channels
 
-Update_motor = 0.03; %in seconds
+Update_motor = 0.03; %in seconds, how frequently do we need to send updated motor positions
+M0 = 120;   % Motor initial setup              
+step = 0.4; % The speed of increment
 
 Twindow =1; % number of seconds to have on screen at once
-plotsize=Twindow*Fs;
-chn_num=1;
 
+num_ave = 40; % number of samples for sliding RMS window
+
+plotsize=Twindow*Fs;
 time=(0:plotsize-1)/Fs;
 
 data = zeros(chn_num,plotsize);
@@ -21,13 +25,15 @@ TXBuf = zeros(10,1);
 
 packetsize=17;
 numread=20; %max 30 as 512 bytes inbuffer
-num_ave = 40;
 
 
-[bh,ah] = butter(3,3/(Fs/2),'high');
-[bl,al] = butter(3,30/(Fs/2),'low');
+%% filters for EMG
+[bh,ah] = butter(3,3/(Fs/2),'high'); % High pass at 3 Hz
+[bl,al] = butter(3,30/(Fs/2),'low'); % low-pass at 30 Hz
+
 %% Graph Stuff
 
+% Raw EMG data
 subplot(3,1,1);
 plotGraph1 = plot(time,data(1,:),'-',...
     'LineWidth',2,...
@@ -41,6 +47,7 @@ ylabel('Voltage, V','FontSize',15);
 ylim([0,1000]);
 xlim([0,1]);
 
+% RMS EMG 
 subplot(3,1,2);
 plotGraph2 = plot(time,rms(1,:),'-',...
     'LineWidth',2,...
@@ -54,6 +61,7 @@ ylabel('RMS Voltage, V','FontSize',15);
 ylim([0,100]);
 xlim([0,1]);
 
+% Motor position comand
 subplot(3,1,3);
 plotGraph3 = plot(time,motor(1,:),'-',...
     'LineWidth',2,...
@@ -75,11 +83,8 @@ iSample =1;
 wSamp=1;
 fwrite(ard,'S');
                       
-   %%               
-M0 = 120;
-step = 0.4;
-% 
-while ishandle(plotGraph1) %&& ishandle(plotGraph2)
+%% main loop
+while ishandle(plotGraph1) 
     
     if ard.BytesAvailable >= numread*packetsize
         
@@ -109,17 +114,15 @@ while ishandle(plotGraph1) %&& ishandle(plotGraph2)
             else
                 M0=M0-3*step;
             end
-            
-            
-            
-            
-%%            
+           
+%% Checks the limits for motors       
+
             if M0>170
                 M0=170;
             elseif M0<10
                 M0=20;
             end
-            
+%% Graph for M and increment the counter           
             motor(1,iSample)=M0;
  
             iSample = iSample +1;
@@ -130,7 +133,8 @@ while ishandle(plotGraph1) %&& ishandle(plotGraph2)
             end
             
         end
-        
+
+%% Update the graphs
         try
             set(plotGraph1,'YData',data(1,:));
             set(plotGraph2,'YData',rms(1,:));
@@ -138,19 +142,17 @@ while ishandle(plotGraph1) %&& ishandle(plotGraph2)
             drawnow;
         
         catch
-   end
-        
-   packetsleft=floor(ard.BytesAvailable/packetsize);
-   if packetsleft > 2*numread 
-       fprintf(2,'Update rate is too slow!: %d \n',packetsleft);
-   end
-   
-   
-   
+        end
 
-   
+%% Check the speed of reading
+
+        packetsleft=floor(ard.BytesAvailable/packetsize);
+        if packetsleft > 2*numread 
+            fprintf(2,'Update rate is too slow!: %d \n',packetsleft);
+        end
     end
- %% 
+    
+%% Send the motors position to arduino
   if wSamp>plotsize*Update_motor
       
      M = uint16([M0,M0,M0,M0,180-M0]);
@@ -161,10 +163,10 @@ while ishandle(plotGraph1) %&& ishandle(plotGraph2)
        TXBuf(2*CurrCh)=P(1);    
      end
 
-    for i = 1:10
-      fwrite(ard,TXBuf(i));
-    end
-      wSamp=1;
+     for i = 1:10
+       fwrite(ard,TXBuf(i));
+     end
+     wSamp=1;
   end
     
 end
