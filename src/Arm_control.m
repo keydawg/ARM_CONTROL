@@ -12,7 +12,10 @@ plotsize=Twindow*Fs;
 chn_num=1;
 
 time=(0:plotsize-1)/Fs;
-data=zeros(chn_num,plotsize);
+
+data = zeros(chn_num,plotsize);
+rms  = zeros(chn_num,plotsize);
+motor= zeros(chn_num,plotsize);
 
 TXBuf = zeros(10,1);
 
@@ -39,7 +42,7 @@ ylim([0,1000]);
 xlim([0,1]);
 
 subplot(3,1,2);
-plotGraph2 = plot(time,data(1,:),'-',...
+plotGraph2 = plot(time,rms(1,:),'-',...
     'LineWidth',2,...
     'MarkerFaceColor','w',...
     'MarkerSize',2);
@@ -52,7 +55,7 @@ ylim([0,100]);
 xlim([0,1]);
 
 subplot(3,1,3);
-plotGraph3 = plot(time,data(1,:),'-',...
+plotGraph3 = plot(time,motor(1,:),'-',...
     'LineWidth',2,...
     'MarkerFaceColor','w',...
     'MarkerSize',2);
@@ -85,17 +88,17 @@ while ishandle(plotGraph1) %&& ishandle(plotGraph2)
             [A,count] = fread(ard,packetsize,'uint8');
                
             data(1,iSample)=double(swapbytes(typecast(uint8(A(5:6)), 'uint16')));
+           % data(2,iSample)=double(swapbytes(typecast(uint8(A(7:8)), 'uint16')));
             
             if iSample > num_ave
-                data(2,iSample) = std(filtfilt(bh,ah,data(1,iSample-num_ave:iSample)));
-                data(2,iSample) = mean(data(2,iSample-5:iSample));
+                rms(1,iSample) = std(filtfilt(bh,ah,data(1,iSample-num_ave:iSample)));
+                rms(1,iSample) = mean(rms(1,iSample-5:iSample));
             else
-                data(2,iSample) = std(filtfilt(bh,ah,data(1,[end-num_ave+iSample:end,1:iSample])));
-                %data(2,iSample) = mean(data(2,[end-numread+iSample:end,1:iSample]));
-                data(2,iSample) = mean(data(2,[end-5+iSample:end,1:iSample]));
+                rms(1,iSample) = std(filtfilt(bh,ah,data(1,[end-num_ave+iSample:end,1:iSample])));
+                rms(1,iSample) = mean(rms(1,[end-5+iSample:end,1:iSample]));
             end
             
-            P = data(2,iSample);
+            P = rms(1,iSample);
 %% THRESHOLD CONDITION controls the speed          
             if P<70
                 M0=M0+step;
@@ -117,7 +120,7 @@ while ishandle(plotGraph1) %&& ishandle(plotGraph2)
                 M0=20;
             end
             
-            data(3,iSample)=M0;
+            motor(1,iSample)=M0;
  
             iSample = iSample +1;
             wSamp = wSamp+1;
@@ -130,12 +133,10 @@ while ishandle(plotGraph1) %&& ishandle(plotGraph2)
         
         try
             set(plotGraph1,'YData',data(1,:));
-            set(plotGraph2,'YData',data(2,:));
-            set(plotGraph3,'YData',data(3,:));
+            set(plotGraph2,'YData',rms(1,:));
+            set(plotGraph3,'YData',motor(1,:));
             drawnow;
-            % set(plotGraph2,'YData',data(2,:));
-            %set(plotGraph3,'YData',10*log10(Pyy));
-            %set(plotGraph3,'YData',data(2,:));
+        
         catch
    end
         
