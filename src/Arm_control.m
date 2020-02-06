@@ -141,7 +141,7 @@ while ishandle(plotGraph1) %&& ishandle(plotGraph2)
    end
         
    packetsleft=floor(ard.BytesAvailable/packetsize);
-   if packetsleft > 20 %max is 30 but lets leave some room
+   if packetsleft > 2*numread 
        fprintf(2,'Update rate is too slow!: %d \n',packetsleft);
    end
    
@@ -154,6 +154,7 @@ while ishandle(plotGraph1) %&& ishandle(plotGraph2)
   if wSamp>plotsize*Update_motor
       
      M = uint16([M0,M0,M0,M0,180-M0]);
+     
      for CurrCh = 1:5
        P = typecast(uint16(M(CurrCh)),'uint8');
        TXBuf(2*CurrCh-1)=P(2);
